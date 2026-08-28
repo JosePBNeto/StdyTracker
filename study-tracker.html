@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Study Ledger</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink: #1B2430;
+    --ink-deep: #131A24;
+    --paper: #EDE6D6;
+    --paper-line: rgba(27,36,48,0.10);
+    --text: #23303F;
+    --text-soft: #5C6572;
+    --brass: #B8862F;
+    --brass-soft: rgba(184,134,47,0.14);
+    --sage: #5F7A5C;
+    --sage-soft: rgba(95,122,92,0.14);
+    --rust: #A54B3F;
+    --hair: rgba(237,230,214,0.14);
+  }
+
+  *{ box-sizing: border-box; }
+
+  html, body{
+    margin:0;
+    padding:0;
+    height:100%;
+    background: var(--ink);
+    background-image:
+      radial-gradient(120% 120% at 15% -10%, rgba(184,134,47,0.10), transparent 55%),
+      linear-gradient(180deg, var(--ink) 0%, var(--ink-deep) 100%);
+    font-family: 'IBM Plex Sans', system-ui, sans-serif;
+    color: var(--text);
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    min-height: 100vh;
+  }
+
+  .frame{
+    width: 100%;
+    max-width: 420px;
+    margin: 20px;
+  }
+
+  .card{
+    background: var(--paper);
+    border: 1px solid rgba(27,36,48,0.55);
+    border-radius: 6px;
+    box-shadow: 0 1px 0 rgba(255,255,255,0.04) inset, 0 18px 40px -20px rgba(0,0,0,0.6);
+    overflow: hidden;
+    position: relative;
+  }
+
+  .card::before{
+    content:"";
+    position:absolute;
+    inset:0;
+    pointer-events:none;
+    background-image: repeating-linear-gradient(
+      to bottom,
+      transparent 0,
+      transparent 27px,
+      var(--paper-line) 27px,
+      var(--paper-line) 28px
+    );
+    opacity: .55;
+  }
+
+  .eyebrow-row{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    padding: 18px 22px 10px;
+    position: relative;
+  }
+
+  .eyebrow{
+    font-size: 11px;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--text-soft);
+    font-weight: 600;
+  }
+
+  .badge{
+    font-size: 9.5px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    font-weight: 600;
+    padding: 3px 8px;
+    border-radius: 3px;
+    border: 1px solid transparent;
+  }
+  .badge.idle{ color: var(--text-soft); border-color: rgba(27,36,48,0.25); }
+  .badge.studying{ color: var(--brass); background: var(--brass-soft); border-color: rgba(184,134,47,0.35); }
+  .badge.paused{ color: var(--sage); background: var(--sage-soft); border-color: rgba(95,122,92,0.35); }
+
+  .rule{
+    height:1px;
+    margin: 0 22px;
+    background: rgba(27,36,48,0.18);
+    position: relative;
+  }
+
+  .block{
+    padding: 16px 22px 4px;
+    position: relative;
+  }
+
+  .label{
+    font-size: 10.5px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--text-soft);
+    font-weight: 600;
+    margin-bottom: 4px;
+  }
+
+  .time{
+    font-family: 'IBM Plex Mono', monospace;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.02em;
+    font-weight: 500;
+    color: var(--text);
+    line-height: 1;
+  }
+
+  .time.total{ font-size: 30px; }
+  .time.session{ font-size: 38px; color: var(--ink); }
+  .time.session.live{ color: var(--brass); }
+  .time.session.paused-state{ color: var(--sage); }
+
+  .controls{
+    display:flex;
+    gap: 10px;
+    padding: 18px 22px 6px;
+    position: relative;
+  }
+
+  button{
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-size: 11.5px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    font-weight: 600;
+    padding: 11px 10px;
+    border-radius: 4px;
+    border: 1px solid rgba(27,36,48,0.55);
+    background: transparent;
+    color: var(--text);
+    cursor: pointer;
+    flex: 1;
+    transition: background .15s ease, color .15s ease, border-color .15s ease, transform .05s ease;
+  }
+  button:active{ transform: translateY(1px); }
+
+  button.primary{
+    background: var(--ink);
+    color: var(--paper);
+    border-color: var(--ink);
+  }
+  button.primary:hover{ background: #2A3646; }
+
+  button.finish{
+    background: transparent;
+    color: var(--rust);
+    border-color: rgba(165,75,63,0.55);
+  }
+  button.finish:hover{ background: rgba(165,75,63,0.08); }
+
+  button:disabled{
+    opacity: 0.35;
+    cursor: default;
+  }
+
+  .footer{
+    padding: 6px 22px 18px;
+    position: relative;
+  }
+
+  .history-toggle{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    width:100%;
+    background:none;
+    border:none;
+    padding: 10px 0 6px;
+    cursor:pointer;
+    color: var(--text-soft);
+    font-family: 'IBM Plex Sans', sans-serif;
+  }
+  .history-toggle .label{ margin:0; }
+  .chev{
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    transition: transform .18s ease;
+  }
+  .chev.open{ transform: rotate(90deg); }
+
+  .history-list{
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height .25s ease;
+  }
+  .history-list.open{
+    max-height: 220px;
+    overflow-y: auto;
+  }
+
+  .history-row{
+    display:flex;
+    align-items: baseline;
+    gap: 8px;
+    padding: 7px 2px;
+    font-size: 12.5px;
+    border-bottom: 1px dashed rgba(27,36,48,0.16);
+  }
+  .history-row:last-child{ border-bottom: none; }
+
+  .history-date{
+    color: var(--text);
+    white-space: nowrap;
+    font-weight: 500;
+  }
+  .history-dots{
+    flex: 1;
+    border-bottom: 1px dotted rgba(27,36,48,0.35);
+    transform: translateY(-3px);
+  }
+  .history-dur{
+    font-family: 'IBM Plex Mono', monospace;
+    font-variant-numeric: tabular-nums;
+    color: var(--text);
+    white-space: nowrap;
+  }
+
+  .empty-history{
+    padding: 14px 2px;
+    font-size: 12px;
+    color: var(--text-soft);
+    font-style: italic;
+  }
+
+  .reset-row{
+    display:flex;
+    justify-content:flex-end;
+    padding-top: 6px;
+  }
+  .reset-link{
+    background:none;
+    border:none;
+    padding:0;
+    font-size: 10.5px;
+    letter-spacing: 0.04em;
+    color: var(--text-soft);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+    cursor: pointer;
+  }
+  .reset-link:hover{ color: var(--rust); }
+</style>
+</head>
+<body>
+
+<div class="frame">
+  <div class="card">
+
+    <div class="eyebrow-row">
+      <div class="eyebrow">Study Ledger</div>
+      <div class="badge idle" id="statusBadge">IDLE</div>
+    </div>
+
+    <div class="rule"></div>
+
+    <div class="block">
+      <div class="label">Total studied</div>
+      <div class="time total" id="totalTime">00:00:00</div>
+    </div>
+
+    <div class="block">
+      <div class="label">Current session</div>
+      <div class="time session" id="sessionTime">00:00:00</div>
+    </div>
+
+    <div class="controls">
+      <button class="primary" id="startBtn">Start</button>
+      <button id="pauseResumeBtn" disabled>Pause</button>
+      <button class="finish" id="finishBtn" disabled>Finish</button>
+    </div>
+
+    <div class="footer">
+      <button class="history-toggle" id="historyToggle">
+        <span class="label">Session history</span>
+        <span class="chev" id="chev">&#8250;</span>
+      </button>
+      <div class="history-list" id="historyList">
+        <div class="empty-history" id="emptyHistory">No sessions recorded yet.</div>
+      </div>
+      <div class="reset-row">
+        <button class="reset-link" id="resetLink">Reset all data</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+(function(){
+  const STORAGE_KEY = 'study-tracker-state';
+
+  let state = {
+    status: 'idle',        // 'idle' | 'studying' | 'paused'
+    totalSeconds: 0,
+    sessionSeconds: 0,     // locked-in seconds for the current session
+    activeSince: null,     // ms timestamp when current studying stretch began
+    history: []            // [{ date: isoString, seconds: number }]
+  };
+
+  const totalTimeEl = document.getElementById('totalTime');
+  const sessionTimeEl = document.getElementById('sessionTime');
+  const statusBadge = document.getElementById('statusBadge');
+  const startBtn = document.getElementById('startBtn');
+  const pauseResumeBtn = document.getElementById('pauseResumeBtn');
+  const finishBtn = document.getElementById('finishBtn');
+  const historyToggle = document.getElementById('historyToggle');
+  const historyList = document.getElementById('historyList');
+  const chev = document.getElementById('chev');
+  const emptyHistory = document.getElementById('emptyHistory');
+  const resetLink = document.getElementById('resetLink');
+
+  function pad(n){ return String(n).padStart(2,'0'); }
+
+  function fmt(totalSecs){
+    totalSecs = Math.max(0, Math.floor(totalSecs));
+    const h = Math.floor(totalSecs/3600);
+    const m = Math.floor((totalSecs%3600)/60);
+    const s = totalSecs%60;
+    return pad(h) + ':' + pad(m) + ':' + pad(s);
+  }
+
+  function liveSessionSeconds(){
+    if(state.status === 'studying' && state.activeSince){
+      return state.sessionSeconds + Math.floor((Date.now() - state.activeSince)/1000);
+    }
+    return state.sessionSeconds;
+  }
+
+  function render(){
+    totalTimeEl.textContent = fmt(state.totalSeconds);
+    sessionTimeEl.textContent = fmt(liveSessionSeconds());
+
+    sessionTimeEl.classList.remove('live','paused-state');
+    statusBadge.classList.remove('idle','studying','paused');
+
+    if(state.status === 'studying'){
+      sessionTimeEl.classList.add('live');
+      statusBadge.classList.add('studying');
+      statusBadge.textContent = 'STUDYING';
+    } else if(state.status === 'paused'){
+      sessionTimeEl.classList.add('paused-state');
+      statusBadge.classList.add('paused');
+      statusBadge.textContent = 'PAUSED';
+    } else {
+      statusBadge.classList.add('idle');
+      statusBadge.textContent = 'IDLE';
+    }
+
+    startBtn.disabled = state.status !== 'idle';
+    pauseResumeBtn.disabled = state.status === 'idle';
+    finishBtn.disabled = state.status === 'idle';
+    pauseResumeBtn.textContent = state.status === 'paused' ? 'Resume' : 'Pause';
+
+    renderHistory();
+  }
+
+  function renderHistory(){
+    historyList.querySelectorAll('.history-row').forEach(el => el.remove());
+    if(state.history.length === 0){
+      emptyHistory.style.display = 'block';
+      return;
+    }
+    emptyHistory.style.display = 'none';
+    const frag = document.createDocumentFragment();
+    state.history.forEach(entry => {
+      const row = document.createElement('div');
+      row.className = 'history-row';
+      const d = new Date(entry.date);
+      const dateStr = d.toLocaleDateString(undefined, { month:'short', day:'numeric' }) +
+        ' \u00B7 ' + d.toLocaleTimeString(undefined, { hour:'numeric', minute:'2-digit' });
+      row.innerHTML =
+        '<span class="history-date">' + dateStr + '</span>' +
+        '<span class="history-dots"></span>' +
+        '<span class="history-dur">' + fmt(entry.seconds) + '</span>';
+      frag.appendChild(row);
+    });
+    historyList.appendChild(frag);
+  }
+
+  async function saveState(){
+    try{
+      await window.storage.set(STORAGE_KEY, JSON.stringify(state), false);
+    }catch(e){
+      console.error('Failed to save study tracker state', e);
+    }
+  }
+
+  async function loadState(){
+    try{
+      const result = await window.storage.get(STORAGE_KEY, false);
+      if(result && result.value){
+        const loaded = JSON.parse(result.value);
+        state = Object.assign(state, loaded);
+      }
+    }catch(e){
+      // no saved state yet, or a read error - start fresh
+    }
+    render();
+  }
+
+  startBtn.addEventListener('click', () => {
+    if(state.status !== 'idle') return;
+    state.status = 'studying';
+    state.sessionSeconds = 0;
+    state.activeSince = Date.now();
+    render();
+    saveState();
+  });
+
+  pauseResumeBtn.addEventListener('click', () => {
+    if(state.status === 'studying'){
+      state.sessionSeconds = liveSessionSeconds();
+      state.activeSince = null;
+      state.status = 'paused';
+    } else if(state.status === 'paused'){
+      state.activeSince = Date.now();
+      state.status = 'studying';
+    }
+    render();
+    saveState();
+  });
+
+  finishBtn.addEventListener('click', () => {
+    if(state.status === 'idle') return;
+    const finalSeconds = liveSessionSeconds();
+    if(finalSeconds > 0){
+      state.totalSeconds += finalSeconds;
+      state.history.unshift({ date: new Date().toISOString(), seconds: finalSeconds });
+      if(state.history.length > 100) state.history.length = 100;
+    }
+    state.status = 'idle';
+    state.sessionSeconds = 0;
+    state.activeSince = null;
+    render();
+    saveState();
+  });
+
+  historyToggle.addEventListener('click', () => {
+    historyList.classList.toggle('open');
+    chev.classList.toggle('open');
+  });
+
+  let resetArmed = false;
+  let resetArmedTimer = null;
+
+  resetLink.addEventListener('click', () => {
+    if(!resetArmed){
+      resetArmed = true;
+      resetLink.textContent = 'Click again to confirm reset';
+      resetLink.style.color = 'var(--rust)';
+      clearTimeout(resetArmedTimer);
+      resetArmedTimer = setTimeout(() => {
+        resetArmed = false;
+        resetLink.textContent = 'Reset all data';
+        resetLink.style.color = '';
+      }, 4000);
+      return;
+    }
+    clearTimeout(resetArmedTimer);
+    resetArmed = false;
+    resetLink.textContent = 'Reset all data';
+    resetLink.style.color = '';
+    state = { status:'idle', totalSeconds:0, sessionSeconds:0, activeSince:null, history:[] };
+    render();
+    saveState();
+  });
+
+  // Live tick every second while studying
+  setInterval(() => {
+    if(state.status === 'studying'){
+      sessionTimeEl.textContent = fmt(liveSessionSeconds());
+    }
+  }, 1000);
+
+  // Safety heartbeat save every 20s while actively studying,
+  // so a closed tab never loses more than a few seconds of progress.
+  setInterval(() => {
+    if(state.status === 'studying'){
+      saveState();
+    }
+  }, 20000);
+
+  loadState();
+})();
+</script>
+
+</body>
+</html>
