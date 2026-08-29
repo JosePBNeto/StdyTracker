@@ -402,19 +402,19 @@
     historyList.appendChild(frag);
   }
 
-  async function saveState(){
+  function saveState(){
     try{
-      await window.storage.set(STORAGE_KEY, JSON.stringify(state), false);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
     }catch(e){
       console.error('Failed to save study tracker state', e);
     }
   }
 
-  async function loadState(){
+  function loadState(){
     try{
-      const result = await window.storage.get(STORAGE_KEY, false);
-      if(result && result.value){
-        const loaded = JSON.parse(result.value);
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if(raw){
+        const loaded = JSON.parse(raw);
         state = Object.assign(state, loaded);
       }
     }catch(e){
